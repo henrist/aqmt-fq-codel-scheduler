@@ -27,6 +27,7 @@
 #include <net/codel.h>
 #include <net/codel_impl.h>
 #include <net/codel_qdisc.h>
+#include "../sch_testbed.h" /* only used for testbed */
 
 /*	Fair Queue CoDel.
  *
@@ -70,6 +71,9 @@ struct fq_codel_sched_data {
 
 	struct list_head new_flows;	/* list of new flows */
 	struct list_head old_flows;	/* list of old flows */
+#ifdef IS_TESTBED
+	struct testbed_metrics testbed;
+#endif
 };
 
 static unsigned int fq_codel_hash(const struct fq_codel_sched_data *q,
@@ -171,6 +175,9 @@ static unsigned int fq_codel_drop(struct Qdisc *sch, unsigned int max_packets,
 		skb = dequeue_head(flow);
 		len += qdisc_pkt_len(skb);
 		mem += get_codel_cb(skb)->mem_usage;
+#ifdef IS_TESTBED
+		testbed_inc_drop_count(skb, &q->testbed);
+#endif
 		__qdisc_drop(skb, to_free);
 	} while (++i < max_packets && len < threshold);
 
@@ -197,6 +204,9 @@ static int fq_codel_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	if (idx == 0) {
 		if (ret & __NET_XMIT_BYPASS)
 			qdisc_qstats_drop(sch);
+#ifdef IS_TESTBED
+		testbed_inc_drop_count(skb, &q->testbed);
+#endif
 		__qdisc_drop(skb, to_free);
 		return ret;
 	}
@@ -315,6 +325,13 @@ begin:
 
 	flow->dropped += q->cstats.drop_count - prev_drop_count;
 	flow->dropped += q->cstats.ecn_mark - prev_ecn_mark;
+#ifdef IS_TESTBED
+	/* Marked packages are detected by traffic analyzer, no need
+	 * to care about them. No ECN packets gets dropped by codel_dequeue,
+	 * so we can assume all drops are non-ecn
+	 */
+	q->testbed.drops_nonecn += q->cstats.drop_count - prev_drop_count;
+#endif
 
 	if (!skb) {
 		/* force a pass through old_flows to prevent starvation */
@@ -335,6 +352,9 @@ begin:
 		q->cstats.drop_count = 0;
 		q->cstats.drop_len = 0;
 	}
+#ifdef IS_TESTBED
+	testbed_add_metrics(skb, &q->testbed);
+#endif
 	return skb;
 }
 
@@ -486,6 +506,9 @@ static int fq_codel_init(struct Qdisc *sch, struct nlattr *opt)
 	codel_stats_init(&q->cstats);
 	q->cparams.ecn = true;
 	q->cparams.mtu = psched_mtu(qdisc_dev(sch));
+#ifdef IS_TESTBED
+	testbed_metrics_init(&q->testbed);
+#endif
 
 	if (opt) {
 		int err = fq_codel_change(sch, opt);
