@@ -27,7 +27,7 @@
 #include <net/codel.h>
 #include <net/codel_impl.h>
 #include <net/codel_qdisc.h>
-#include "../sch_testbed.h" /* only used for testbed */
+#include "../common/sch_testbed.h" /* only used for testbed */
 
 /*	Fair Queue CoDel.
  *
