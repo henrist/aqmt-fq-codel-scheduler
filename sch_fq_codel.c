@@ -27,7 +27,7 @@
 #include <net/codel.h>
 #include <net/codel_impl.h>
 #include <net/codel_qdisc.h>
-#include "testbed.h" /* symlink this from common folder in aqmt repository */
+#include "testbed.h" /* see README for where this is located */
 
 /*	Fair Queue CoDel.
  *
