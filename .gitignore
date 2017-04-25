@@ -6,3 +6,5 @@ Module.symvers
 modules.order
 sch_fq_codel.ko
 sch_fq_codel.mod.c
+sch_fq_codel.mod.o
+sch_fq_codel.o
